@@ -91,25 +91,34 @@ QPushButton {
         widget.setLayout(vbox)
 
     def execute(self, file_src):
-        nai_dict = NaiDictGetter.get_naidict_from_file(file_src)
-        self.textedit_list[0].setText(nai_dict["prompt"])
-        self.textedit_list[1].setText(nai_dict["negative_prompt"])
-        self.textedit_list[2].setText(prettify_dict(nai_dict["option"]))
-        self.textedit_list[3].setText(prettify_dict(nai_dict["etc"]))
+        result, error_code = NaiDictGetter.get_naidict_from_file(file_src)
+        print(result,error_code)
+
+        if error_code == 0:
+            QMessageBox.information(self, '경고', "EXIF가 존재하지 않는 파일입니다.")
+        elif error_code == 1 or error_code == 2:
+            QMessageBox.information(self, '경고', "EXIF는 존재하나 NAI로부터 만들어진 것이 아닌 듯 합니다.")
+            self.textedit_list[0].setText(str(result))
+        elif error_code == 3:
+            nai_dict = result
+            self.textedit_list[0].setText(nai_dict["prompt"])
+            self.textedit_list[1].setText(nai_dict["negative_prompt"])
+            self.textedit_list[2].setText(prettify_dict(nai_dict["option"]))
+            self.textedit_list[3].setText(prettify_dict(nai_dict["etc"]))
 
 
-        self.button_img.setStyleSheet("""
-            padding: 5px;
-            border-color: #FFFFFF;
-            border-style: dotted;
-            border-width: 5px;
-            background-color: #FBEFEF;
-            background-position: center;
-        """)
-        self.button_img.setIcon(QIcon(file_src))
-        btn_size = self.button_img.size()
-        self.button_img.setIconSize(QSize(int(btn_size.width()*0.9),int(btn_size.height()*0.9)))
-        self.button_img.setText("")
+            self.button_img.setStyleSheet("""
+                padding: 5px;
+                border-color: #FFFFFF;
+                border-style: dotted;
+                border-width: 5px;
+                background-color: #FBEFEF;
+                background-position: center;
+            """)
+            self.button_img.setIcon(QIcon(file_src))
+            btn_size = self.button_img.size()
+            self.button_img.setIconSize(QSize(int(btn_size.width()*0.95),int(btn_size.height()*0.95)))
+            self.button_img.setText("")
 
     def show_select_dialog(self):
         select_dialog = QFileDialog()

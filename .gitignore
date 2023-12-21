@@ -2,4 +2,5 @@
 pyinstaller.bat
 build/
 dist/
+__pycache__/
 ndg_gui.spec

@@ -53,13 +53,24 @@ def get_naidict_from_exifdict(exif_dict):
 
 
 def get_naidict_from_file(src):
-    info_str = get_infostr_from_file(src)
+    try:
+        info_str = get_infostr_from_file(src)
+        if info_str == {}:
+            return None, 0
+    except Exception as e:
+        return None, 0
 
-    exif_dict = get_exifdict_from_infostr(info_str)
+    try:
+        exif_dict = get_exifdict_from_infostr(info_str)
+    except Exception as e:
+        return info_str, 1
 
-    nai_dict = get_naidict_from_exifdict(exif_dict)
+    try:
+        nai_dict = get_naidict_from_exifdict(exif_dict)
+    except Exception as e:
+        return info_str, 2
 
-    return nai_dict
+    return nai_dict, 3
 
 
 if __name__ == "__main__":
