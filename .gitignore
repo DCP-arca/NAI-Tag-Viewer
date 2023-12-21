@@ -4,3 +4,4 @@ build/
 dist/
 __pycache__/
 ndg_gui.spec
+NAI-Exif-Viewer.spec
