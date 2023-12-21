@@ -1,0 +1,5 @@
+*.dll
+pyinstaller.bat
+build/
+dist/
+ndg_gui.spec
