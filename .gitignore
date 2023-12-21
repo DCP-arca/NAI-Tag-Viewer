@@ -5,3 +5,5 @@ dist/
 __pycache__/
 ndg_gui.spec
 NAI-Exif-Viewer.spec
+target.png
+target without exif.png
