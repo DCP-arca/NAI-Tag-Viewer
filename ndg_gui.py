@@ -9,7 +9,7 @@ from PyQt5.QtCore import QSettings, QPoint, QSize, QCoreApplication
 
 import NaiDictGetter
 
-TITLE_NAME = "NAI Exif Viewer"
+TITLE_NAME = "NAI Image Tag Viewer"
 TOP_NAME = "dcp_arca"
 APP_NAME = "ndg_gui"
 
