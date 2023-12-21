@@ -1,8 +1,5 @@
-import gradio as gr
 from PIL import Image
-from gradio import processing_utils
 import gzip
-import json
 
 
 # from https://github.com/neggles/sd-webui-stealth-pnginfo/
