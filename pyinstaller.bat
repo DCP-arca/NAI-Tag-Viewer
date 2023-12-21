@@ -1,0 +1,1 @@
+pyinstaller --noconfirm --onefile --windowed "D:\Dev\Workspace\Python\NAI-Exif-Viewer"
