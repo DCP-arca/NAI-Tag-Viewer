@@ -1,32 +1,26 @@
 from PIL import Image
 import json
+
 from stealth_pnginfo import read_info_from_image_stealth
 
 TARGETKEY_NAIDICT_OPTION = ("steps", "height", "width",
                             "scale", "seed", "sampler", "n_samples", "sm", "sm_dyn")
 
 
-def _get_infostr_from_file(src):
+def _get_infostr_from_img(img):
     exif = None
     pnginfo = None
 
-    # get image
-    try:
-        im = Image.open(src)
-        im.load()
-    except Exception as e:
-        print(e)
-
     # exif
-    if im.info:
+    if img.info:
         try:
-            exif = json.dumps(im.info)
+            exif = json.dumps(img.info)
         except Exception as e:
             print(e)
 
     # stealth pnginfo
     try:
-        pnginfo = read_info_from_image_stealth(im)
+        pnginfo = read_info_from_image_stealth(img)
     except Exception as e:
         print(e)
 
@@ -70,19 +64,30 @@ def _get_naidict_from_exifdict(exif_dict):
 
 
 def get_naidict_from_file(src):
-    exif, pnginfo = _get_infostr_from_file(src)
+    try:
+        img = Image.open(src)
+        img.load()
+    except Exception as e:
+        print(e)
+        return None, 0
+
+    return get_naidict_from_img(img)
+
+
+def get_naidict_from_img(img):
+    exif, pnginfo = _get_infostr_from_img(img)
     if not exif and not pnginfo:
         return None, 0
 
     ed1 = _get_exifdict_from_infostr(exif)
     ed2 = _get_exifdict_from_infostr(pnginfo)
     if not ed1 and not ed2:
-        return exif, 1
+        return exif or pnginfo, 1
 
     nd1 = _get_naidict_from_exifdict(ed1)
     nd2 = _get_naidict_from_exifdict(ed2)
     if not nd1 and not nd2:
-        return exif, 2
+        return exif or pnginfo, 2
 
     if nd1:
         return nd1, 3
@@ -94,6 +99,7 @@ if __name__ == "__main__":
     src = "target.webp"
 
     nd = get_naidict_from_file(src)
+    print(nd)
     # exif_dict = get_exifdict_from_infostr(info_str)
     # nai_dict = get_naidict_from_exifdict(exif_dict)
 

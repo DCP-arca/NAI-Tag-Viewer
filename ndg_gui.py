@@ -2,9 +2,13 @@ import json
 import sys
 import time
 
+from io import BytesIO
+from PIL import Image
+from urllib import request
+
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QFileDialog, QLabel, QWidget, QTextEdit
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, QProgressBar, QMessageBox, QDialog
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QPixmap, QImage
 from PyQt5.QtCore import QSettings, QPoint, QSize, QCoreApplication
 
 import NaiDictGetter
@@ -23,6 +27,24 @@ TEXTEDIT_HINT = "버튼 클릭 또는 아무 곳에 드래그 드랍하여 불�
 
 def prettify_dict(d):
     return json.dumps(d, sort_keys=True, indent=4)
+
+
+def pil2pixmap(im):
+    if im.mode == "RGB":
+        r, g, b = im.split()
+        im = Image.merge("RGB", (b, g, r))
+    elif im.mode == "RGBA":
+        r, g, b, a = im.split()
+        im = Image.merge("RGBA", (b, g, r, a))
+    elif im.mode == "L":
+        im = im.convert("RGBA")
+    # Bild in RGBA konvertieren, falls nicht bereits passiert
+    im2 = im.convert("RGBA")
+    data = im2.tobytes("raw", "RGBA")
+    qim = QImage(
+        data, im.size[0], im.size[1], QImage.Format_ARGB32)
+    pixmap = QPixmap.fromImage(qim)
+    return pixmap
 
 
 class MyWidget(QMainWindow):
@@ -88,18 +110,26 @@ QPushButton {
 
         widget.setLayout(vbox)
 
-    def execute(self, file_src):
-        result, error_code = NaiDictGetter.get_naidict_from_file(file_src)
-        print(result, error_code)
+    def execute_bystr(self, file_src):
+        nai_dict, error_code = NaiDictGetter.get_naidict_from_file(file_src)
+        print(nai_dict, error_code)
 
+        self._execute_byinfo(nai_dict, error_code, file_src)
+
+    def execute_byimg(self, img):
+        nai_dict, error_code = NaiDictGetter.get_naidict_from_img(img)
+        print(nai_dict, error_code)
+
+        self._execute_byinfo(nai_dict, error_code, img)
+
+    def _execute_byinfo(self, nai_dict, error_code, img_obj):
         if error_code == 0:
             QMessageBox.information(self, '경고', "EXIF가 존재하지 않는 파일입니다.")
         elif error_code == 1 or error_code == 2:
             QMessageBox.information(
                 self, '경고', "EXIF는 존재하나 NAI로부터 만들어진 것이 아닌 듯 합니다.")
-            self.textedit_list[0].setText(str(result))
+            self.textedit_list[0].setText(str(nai_dict))
         elif error_code == 3:
-            nai_dict = result
             self.textedit_list[0].setText(nai_dict["prompt"])
             self.textedit_list[1].setText(nai_dict["negative_prompt"])
             self.textedit_list[2].setText(prettify_dict(nai_dict["option"]))
@@ -113,7 +143,13 @@ QPushButton {
                 background-color: #FBEFEF;
                 background-position: center;
             """)
-            self.button_img.setIcon(QIcon(file_src))
+            if isinstance(img_obj, str):
+                qicon = QIcon(img_obj)
+            else:
+                pixmap = pil2pixmap(img_obj)
+                qicon = QIcon(pixmap)
+
+            self.button_img.setIcon(qicon)
             btn_size = self.button_img.size()
             self.button_img.setIconSize(
                 QSize(int(btn_size.width() * 0.95), int(btn_size.height() * 0.95)))
@@ -135,18 +171,27 @@ QPushButton {
             event.ignore()
 
     def dropEvent(self, event):
-        files = [u.toLocalFile() for u in event.mimeData().urls()]
+        files = [u for u in event.mimeData().urls()]
 
         if len(files) != 1:
             QMessageBox.information(self, '경고', "파일을 하나만 옮겨주세요.")
             return
 
-        fname = files[0]
-        if not fname.endswith(".png") and not fname.endswith(".webp"):
-            QMessageBox.information(self, '경고', "png, webp 파일만 가능합니다.")
-            return
-
-        self.execute(fname)
+        furl = files[0]
+        if furl.isLocalFile():
+            fname = furl.toLocalFile()
+            if not fname.endswith(".png") and not fname.endswith(".webp"):
+                QMessageBox.information(self, '경고', "png, webp 파일만 가능합니다.")
+                return
+            self.execute_bystr(fname)
+        else:
+            url = furl.url()
+            res = request.urlopen(url).read()
+            img = Image.open(BytesIO(res))
+            if not img:
+                QMessageBox.information(self, '경고', "이미지 파일 다운로드에 실패했습니다.")
+                return
+            self.execute_byimg(img)
 
     def closeEvent(self, e):
         self.settings.setValue("pos", self.pos())
