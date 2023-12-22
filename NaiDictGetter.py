@@ -6,104 +6,100 @@ TARGETKEY_NAIDICT_OPTION = ("steps", "height", "width",
                             "scale", "seed", "sampler", "n_samples", "sm", "sm_dyn")
 
 
-def get_infostr_from_file(src):
+def _get_infostr_from_file(src):
+    exif = None
+    pnginfo = None
+
     # get image
     try:
         im = Image.open(src)
         im.load()
     except Exception as e:
         print(e)
-        return None
 
     # exif
     if im.info:
-        return json.dumps(im.info)
+        try:
+            exif = json.dumps(im.info)
+        except Exception as e:
+            print(e)
 
     # stealth pnginfo
     try:
-        gi = read_info_from_image_stealth(im)
-        return gi
+        pnginfo = read_info_from_image_stealth(im)
     except Exception as e:
         print(e)
 
-    return None
+    return exif, pnginfo
 
 
-def get_exifdict_from_infostr(info_str):
+def _get_exifdict_from_infostr(info_str):
     try:
         comment_str = json.loads(info_str)['Comment']
         exif_dict = json.loads(comment_str)
         return exif_dict
     except Exception as e:
         print(e)
-        return None
+
+    return None
 
 
-def get_naidict_from_exifdict(exif_dict):
-    nai_dict = {}
-
+def _get_naidict_from_exifdict(exif_dict):
     try:
+        nai_dict = {}
         nai_dict["prompt"] = exif_dict["prompt"].strip()
-    except Exception as e:
-        print(e)
-        pass
-
-    try:
         nai_dict["negative_prompt"] = exif_dict["uc"].strip()
+
+        option_dict = {}
+        for key in TARGETKEY_NAIDICT_OPTION:
+            if key in exif_dict.keys():
+                option_dict[key] = exif_dict[key]
+        nai_dict["option"] = option_dict
+
+        etc_dict = {}
+        for key in exif_dict.keys():
+            if key in TARGETKEY_NAIDICT_OPTION + ("uc", "prompt"):
+                continue
+            etc_dict[key] = exif_dict[key]
+        nai_dict["etc"] = etc_dict
+        return nai_dict
     except Exception as e:
         print(e)
-        pass
 
-    option_dict = {}
-    for key in TARGETKEY_NAIDICT_OPTION:
-        if key in exif_dict.keys():
-            option_dict[key] = exif_dict[key]
-    nai_dict["option"] = option_dict
-
-    etc_dict = {}
-    for key in exif_dict.keys():
-        if key in TARGETKEY_NAIDICT_OPTION + ("uc", "prompt"):
-            continue
-        etc_dict[key] = exif_dict[key]
-    nai_dict["etc"] = etc_dict
-
-    return nai_dict
+    return None
 
 
 def get_naidict_from_file(src):
-    try:
-        info_str = get_infostr_from_file(src)
-        if info_str == {}:
-            return None, 0
-    except Exception as e:
-        print(e)
+    exif, pnginfo = _get_infostr_from_file(src)
+    if not exif and not pnginfo:
         return None, 0
 
-    try:
-        exif_dict = get_exifdict_from_infostr(info_str)
-    except Exception as e:
-        print(e)
-        return info_str, 1
+    ed1 = _get_exifdict_from_infostr(exif)
+    ed2 = _get_exifdict_from_infostr(pnginfo)
+    if not ed1 and not ed2:
+        return exif, 1
 
-    try:
-        nai_dict = get_naidict_from_exifdict(exif_dict)
-    except Exception as e:
-        print(e)
-        return info_str, 2
+    nd1 = _get_naidict_from_exifdict(ed1)
+    nd2 = _get_naidict_from_exifdict(ed2)
+    if not nd1 and not nd2:
+        return exif, 2
 
-    return nai_dict, 3
+    if nd1:
+        return nd1, 3
+    elif nd2:
+        return nd2, 3
 
 
 if __name__ == "__main__":
-    src = "target.png"
+    src = "target.webp"
 
-    # info_str = get_infostr_from_file(src)
+    nd = get_naidict_from_file(src)
     # exif_dict = get_exifdict_from_infostr(info_str)
     # nai_dict = get_naidict_from_exifdict(exif_dict)
 
-    nai_dict, errcode = get_naidict_from_file(src)
-    print(errcode)
-    print(nai_dict["prompt"])
-    print(nai_dict["negative_prompt"])
-    print(nai_dict["option"])
-    print(nai_dict["etc"])
+    # nai_dict, errcode = get_naidict_from_file(src)
+    # print(errcode)
+    # print(nai_dict["prompt"])
+    # print(nai_dict["negative_prompt"])
+    # print(nai_dict["option"])
+    # print(nai_dict["etc"])

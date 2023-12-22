@@ -123,7 +123,7 @@ QPushButton {
         select_dialog = QFileDialog()
         select_dialog.setFileMode(QFileDialog.ExistingFile)
         fname = select_dialog.getOpenFileNames(
-            self, 'Open image file to get nai exif data', '', 'PNG File(*.png)')
+            self, 'Open image file to get nai exif data', '', 'Image File(*.png *.webp)')
 
         if fname[0]:
             self.execute(fname[0][0])
@@ -142,8 +142,8 @@ QPushButton {
             return
 
         fname = files[0]
-        if not fname.endswith(".png"):
-            QMessageBox.information(self, '경고', "png 파일만 가능합니다.")
+        if not fname.endswith(".png") and not fname.endswith(".webp"):
+            QMessageBox.information(self, '경고', "png, webp 파일만 가능합니다.")
             return
 
         self.execute(fname)
