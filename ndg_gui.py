@@ -162,7 +162,7 @@ QPushButton {
             self, 'Open image file to get nai exif data', '', 'Image File(*.png *.webp)')
 
         if fname[0]:
-            self.execute(fname[0][0])
+            self.execute_bystr(fname[0][0])
 
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
