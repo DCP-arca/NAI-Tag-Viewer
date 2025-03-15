@@ -12,13 +12,16 @@ from PyQt5.QtGui import QIcon, QPixmap, QImage
 from PyQt5.QtCore import QSettings, QPoint, QSize, QCoreApplication
 
 import NaiDictGetter
+from prompt_converter import calculate_w_values
 
-TITLE_NAME = "NAI Image Tag Viewer"
+TITLE_NAME = "NAI Image Tag Viewer(with webui)"
 TOP_NAME = "dcp_arca"
 APP_NAME = "ndg_gui"
 
 LABEL_TEXT_LIST = ["프롬프트(Prompt)",
                    "네거티브 프롬프트(Undesired Content)",
+                   "변환된 프롬프트(Converted Prompt)",
+                   "변환된 네거티브 프롬프트(Converted Undesired Content)",
                    "생성 옵션(AI Settings)",
                    "기타 정보"]
 
@@ -80,6 +83,7 @@ class MyWidget(QMainWindow):
 
         vbox = QVBoxLayout()
 
+        # Image section
         vbox_img = QVBoxLayout()
         vbox.addLayout(vbox_img)
         button_img = QPushButton(TEXTEDIT_HINT, self)
@@ -98,17 +102,75 @@ QPushButton {
         vbox_img.addWidget(button_img)
         self.button_img = button_img
 
+        # Text edit boxes
         self.textedit_list = []
+        
+        # Original prompt
         self.textedit_list.append(
-            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[0], 30))
+            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[0], 20))
+        
+        # Original negative prompt
         self.textedit_list.append(
-            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[1], 30))
+            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[1], 20))
+        
+        # Add convert button section
+        convert_hbox = QHBoxLayout()
+        vbox.addLayout(convert_hbox)
+        
+        convert_button = QPushButton("변환하기 (Convert)", self)
+        convert_button.clicked.connect(self.convert_prompts)
+        convert_hbox.addWidget(convert_button)
+        
+        copy_prompt_button = QPushButton("변환된 프롬프트 복사", self)
+        copy_prompt_button.clicked.connect(lambda: self.copy_to_clipboard(2))
+        convert_hbox.addWidget(copy_prompt_button)
+        
+        copy_neg_button = QPushButton("변환된 네거티브 복사", self)
+        copy_neg_button.clicked.connect(lambda: self.copy_to_clipboard(3))
+        convert_hbox.addWidget(copy_neg_button)
+        
+        # Converted prompt
         self.textedit_list.append(
             add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[2], 20))
+        
+        # Converted negative prompt
         self.textedit_list.append(
-            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[3], 5))
+            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[3], 20))
+        
+        # Settings and other info
+        self.textedit_list.append(
+            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[4], 15))
+        self.textedit_list.append(
+            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[5], 5))
 
         widget.setLayout(vbox)
+
+    def convert_prompts(self):
+        # Get the current prompt and negative prompt
+        prompt = self.textedit_list[0].toPlainText()
+        neg_prompt = self.textedit_list[1].toPlainText()
+        
+        if not prompt and not neg_prompt:
+            QMessageBox.information(self, '알림', "변환할 프롬프트가 없습니다.")
+            return
+        
+        # Convert and set the results
+        if prompt:
+            converted_prompt = calculate_w_values(prompt)
+            self.textedit_list[2].setText(converted_prompt)
+        
+        if neg_prompt:
+            converted_neg_prompt = calculate_w_values(neg_prompt)
+            self.textedit_list[3].setText(converted_neg_prompt)
+
+    def copy_to_clipboard(self, index):
+        clipboard = QApplication.clipboard()
+        text = self.textedit_list[index].toPlainText()
+        if text:
+            clipboard.setText(text)
+            QMessageBox.information(self, '알림', "클립보드에 복사되었습니다.")
+        else:
+            QMessageBox.information(self, '알림', "복사할 내용이 없습니다.")
 
     def execute_bystr(self, file_src):
         nai_dict, error_code = NaiDictGetter.get_naidict_from_file(file_src)
@@ -127,13 +189,18 @@ QPushButton {
             QMessageBox.information(self, '경고', "EXIF가 존재하지 않는 파일입니다.")
         elif error_code == 1 or error_code == 2:
             QMessageBox.information(
-                self, '경고', "EXIF는 존재하나 NAI로부터 만들어진 것이 아닌 듯 합니다.")
+                self, '경고', "EXIF는 존재하나 NAI/WebUI로부터 만들어진 것이 아닌 듯 합니다.")
             self.textedit_list[0].setText(str(nai_dict))
         elif error_code == 3:
             self.textedit_list[0].setText(nai_dict["prompt"])
             self.textedit_list[1].setText(nai_dict["negative_prompt"])
-            self.textedit_list[2].setText(prettify_dict(nai_dict["option"]))
-            self.textedit_list[3].setText(prettify_dict(nai_dict["etc"]))
+            
+            # Clear converted prompts when loading new image
+            self.textedit_list[2].clear()
+            self.textedit_list[3].clear()
+            
+            self.textedit_list[4].setText(prettify_dict(nai_dict["option"]))
+            self.textedit_list[5].setText(prettify_dict(nai_dict["etc"]))
 
             self.button_img.setStyleSheet("""
                 padding: 5px;
