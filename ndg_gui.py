@@ -8,6 +8,7 @@ from urllib import request
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QFileDialog, QLabel, QWidget, QTextEdit
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, QProgressBar, QMessageBox, QDialog
+from PyQt5.QtWidgets import QScrollArea  # 추가됨
 from PyQt5.QtGui import QIcon, QPixmap, QImage
 from PyQt5.QtCore import QSettings, QPoint, QSize, QCoreApplication
 
@@ -68,8 +69,14 @@ class MyWidget(QMainWindow):
         self.setAcceptDrops(True)
 
     def init_content(self):
-        widget = QWidget()
-        self.setCentralWidget(widget)
+        # 메인 스크롤 영역 생성
+        scroll_area = QScrollArea()
+        self.setCentralWidget(scroll_area)
+        
+        # 스크롤 영역에 들어갈 컨테이너 위젯 생성
+        container = QWidget()
+        scroll_area.setWidget(container)
+        scroll_area.setWidgetResizable(True)  # 위젯 크기 조절 가능하게 설정
 
         def add_titletext_and_textedit(vbox, titletext_content, stretch):
             label = QLabel(titletext_content, self)
@@ -81,7 +88,7 @@ class MyWidget(QMainWindow):
             vbox.addWidget(textedit, stretch=stretch)
             return textedit
 
-        vbox = QVBoxLayout()
+        vbox = QVBoxLayout(container)
 
         # Image section
         vbox_img = QVBoxLayout()
@@ -107,11 +114,11 @@ QPushButton {
         
         # Original prompt
         self.textedit_list.append(
-            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[0], 20))
+            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[0], 10))  # stretch 값 조정
         
         # Original negative prompt
         self.textedit_list.append(
-            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[1], 20))
+            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[1], 10))  # stretch 값 조정
         
         # Add convert button section
         convert_hbox = QHBoxLayout()
@@ -131,19 +138,33 @@ QPushButton {
         
         # Converted prompt
         self.textedit_list.append(
-            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[2], 20))
+            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[2], 10))  # stretch 값 조정
         
         # Converted negative prompt
         self.textedit_list.append(
-            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[3], 20))
+            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[3], 10))  # stretch 값 조정
         
         # Settings and other info
         self.textedit_list.append(
-            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[4], 15))
+            add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[4], 8))  # stretch 값 조정
         self.textedit_list.append(
             add_titletext_and_textedit(vbox, LABEL_TEXT_LIST[5], 5))
 
-        widget.setLayout(vbox)
+    def resizeEvent(self, event):
+        # 윈도우 크기가 변경될 때 이미지 버튼 크기 조절
+        window_width = self.width()
+        if window_width < 500:
+            self.button_img.setMinimumSize(QSize(window_width - 50, window_width - 50))
+        else:
+            self.button_img.setMinimumSize(QSize(500, 500))
+        
+        # 아이콘 크기 조절
+        if hasattr(self, 'button_img') and self.button_img.icon():
+            btn_size = self.button_img.size()
+            self.button_img.setIconSize(
+                QSize(int(btn_size.width() * 0.95), int(btn_size.height() * 0.95)))
+                
+        super().resizeEvent(event)
 
     def convert_prompts(self):
         # Get the current prompt and negative prompt
