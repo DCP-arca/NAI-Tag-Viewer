@@ -76,50 +76,56 @@ def parse_webui_exif(parameters_str):
     if not lines:
         return {}
     
-    prompt = lines[0].strip()
-    negative_prompt = ""
-    options = {}
-    etc = {}
-    
     # Negative prompt 라인을 찾음
     neg_prompt_index = -1
-    for i, line in enumerate(lines[1:], 1):
+    for i, line in enumerate(lines):
         if line.strip().startswith("Negative prompt:"):
-            negative_prompt = line[len("Negative prompt:"):].strip()
             neg_prompt_index = i
             break
     
-    # 옵션 파싱 (Negative prompt 이후의 라인들)
+    # 프롬프트 추출 (Negative prompt 전까지의 모든 줄)
     if neg_prompt_index > 0:
+        prompt = "\n".join(lines[:neg_prompt_index]).strip()
+        negative_prompt = lines[neg_prompt_index][len("Negative prompt:"):].strip()
         option_lines = lines[neg_prompt_index+1:]
-        for line in option_lines:
-            line = line.strip()
-            parts = line.split(',')
-            for part in parts:
-                part = part.strip()
-                if ':' in part:
-                    key, value = part.split(':', 1)
-                    key = key.strip().lower()
-                    value = value.strip()
-                    
-                    # 숫자 변환 시도
-                    try:
-                        if '.' in value:
-                            value = float(value)
-                        else:
-                            value = int(value)
-                    except:
-                        pass
-                    
-                    if key in WEBUI_OPTION_MAPPING:
-                        key = WEBUI_OPTION_MAPPING[key]
-                    
-                    if key.lower() in [k.lower() for k in TARGETKEY_NAIDICT_OPTION]:
-                        options[key] = value
+    else:
+        # Negative prompt가 없는 경우
+        prompt = "\n".join(lines).strip()
+        negative_prompt = ""
+        option_lines = []
+    
+    options = {}
+    etc = {}
+    
+    # 옵션 파싱
+    for line in option_lines:
+        line = line.strip()
+        parts = line.split(',')
+        for part in parts:
+            part = part.strip()
+            if ':' in part:
+                key, value = part.split(':', 1)
+                key = key.strip().lower()
+                value = value.strip()
+                
+                # 숫자 변환 시도
+                try:
+                    if '.' in value:
+                        value = float(value)
                     else:
-                        etc[key] = value
-                elif part:
-                    etc[part] = ""
+                        value = int(value)
+                except:
+                    pass
+                
+                if key in WEBUI_OPTION_MAPPING:
+                    key = WEBUI_OPTION_MAPPING[key]
+                
+                if key.lower() in [k.lower() for k in TARGETKEY_NAIDICT_OPTION]:
+                    options[key] = value
+                else:
+                    etc[key] = value
+            elif part:
+                etc[part] = ""
     
     return {
         "prompt": prompt,
